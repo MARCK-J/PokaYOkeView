@@ -5,6 +5,12 @@ from pathlib import Path
 import requests
 import time
 
+# ------------------------------------------------------------------------
+# Set up constants
+
+TIME_DIFFERENCE = 5  # Time difference in seconds
+ENTRIES_PER_READING = 20  # Number of entries per reading
+
 # Set the title and favicon that appear in the Browser's tab bar.
 st.set_page_config(
     page_title='Temperature Dashboard',
@@ -20,8 +26,11 @@ endpoint_url = "http://192.168.0.17:80/getReadings"
 def get_temperature_data():
     try:
         response = requests.get(endpoint_url)
+        
         response.raise_for_status()  # Check for HTTP errors
-        return response.json()  # Parse the response as JSON
+        response_data = [float(reading) for reading in response.content.decode('utf-8').split(',')]
+        #print("response: ", response_data) # Debugging
+        return response_data
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching data: {e}")
         return []
@@ -45,19 +54,25 @@ while True:
     readings = get_temperature_data()
 
     if readings:
-        # Get the current time and store the temperature readings
+        # Get the current time and create a list of times spaced by TIME_DIFFERENCE
         current_time = pd.Timestamp.now()
-        temperature_data = {'Time': current_time, 'Temperature': readings}
+        time_list = [current_time - pd.Timedelta(seconds=i*TIME_DIFFERENCE) for i in range(len(readings))]
+        temperature_data = {'Time': time_list, 'Temperature': readings}
         
         # Append the new data to the DataFrame
         new_df = pd.DataFrame(temperature_data)
-        temperature_df = pd.concat([temperature_df, new_df], ignore_index=True)
-
+        # temperature_df = pd.concat([temperature_df, new_df], ignore_index=True) Dado que se está recuperando una serie de datos, concatener está resultando en valores sobrepuestos
+        temperature_df = new_df
+        #print(temperature_df) # Debugging
         # Update the chart
-        chart_placeholder.line_chart(temperature_df.set_index('Time'))
+        chart_placeholder.line_chart(
+            temperature_df.set_index('Time'),
+            y=['Temperature'],
+            use_container_width=True
+        )
 
         # Display the latest temperature readings
-        latest_reading_placeholder.write(f"Latest temperature: {readings[-1]:.2f}°C")
+        latest_reading_placeholder.write(f"Latest temperature: {readings[0]:.2f}°C")
 
-    # Wait for 2 seconds before fetching new data
-    time.sleep(2)
+    # Wait for some seconds before fetching new data
+    time.sleep(TIME_DIFFERENCE)
