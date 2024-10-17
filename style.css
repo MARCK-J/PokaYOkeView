@@ -1,0 +1,18 @@
+<style>
+[data-testid="stAppViewContainer"] {
+    background-color: #b9ffac;
+    opacity: 0.8;
+    background: repeating-linear-gradient(45deg, #a4ff93, #a4ff93 10px, #a4ff93 10px, #a4ff93 20px);
+}
+[data-testid="stMarkdownContainer"] * {
+    color: #777777;  /* Soft gray font color */
+}
+[data-testid="stTextInputRootElement"] * {
+    background-color: #e2ffdd;
+    color:rgb(0, 0, 0);  /* Black font color */
+}
+[data-testid="stBaseButton-secondary"] {
+    background-color: #e2ffdd;
+    color:rgb(0, 0, 0);  /* Black font color */
+}
+</style>

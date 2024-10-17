@@ -1,9 +1,28 @@
 import streamlit as st
 import pandas as pd
-import math
 from pathlib import Path
 import requests
 import time
+
+page_bg_img = '''
+<style>
+[data-testid="stAppViewContainer"] {
+    background-color: #b9ffac;
+    opacity: 0.8;
+    background: repeating-linear-gradient(45deg, #a4ff93, #a4ff93 10px, #a4ff93 10px, #a4ff93 20px);
+}
+[data-testid="stMarkdownContainer"] * {
+    color: #777777;  /* Soft gray font color */
+}
+[data-testid="stTextInputRootElement"] * {
+    background-color: #e2ffdd;  /* Black font color */
+    color:rgb(0, 0, 0);
+}
+[data-testid="stBaseButton-secondary"] {
+    background-color: #e2ffdd;  /* Black font color */
+}
+</style>
+'''
 
 # ------------------------------------------------------------------------
 # Set up constants
@@ -21,6 +40,7 @@ st.set_page_config(
 # Set up the endpoint URLs
 readings_endpoint = "http://192.168.0.17:80/getReadings"
 limits_endpoint = "http://192.168.0.17:80/getLimits"
+set_limits_endpoint = "http://192.168.0.17:80/setLimits"
 
 # ------------------------------------------------------------------------
 # Function to get temperature readings from the endpoint
@@ -44,8 +64,20 @@ def get_temperature_limits():
     except requests.exceptions.RequestException as e:
         st.error(f"Error fetching limits: {e}")
         return {"LowerTemperatureLimit": None, "HigherTemperatureLimit": None}
+    
+# Function to set new temperature limits
+def set_temperature_limits(lower_limit, upper_limit):
+    try:
+        params = {'lower': lower_limit, 'higher': upper_limit}
+        response = requests.post(set_limits_endpoint, params=params)
+        response.raise_for_status()
+        st.success(f"Temperature limits updated successfully to {lower_limit}°C (Lower) and {upper_limit}°C (Higher).")
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error setting temperature limits: {e}")
+        
 # ------------------------------------------------------------------------
 # Draw the page with real-time data updates
+st.markdown(page_bg_img, unsafe_allow_html=True)
 
 st.title(":thermometer: Real-time Temperature Dashboard")
 
@@ -64,6 +96,16 @@ limits = get_temperature_limits()
 lower_limit = st.text_input('Lower Temperature Limit (°C)', value=limits['LowerTemperatureLimit'])
 upper_limit = st.text_input('Higher Temperature Limit (°C)', value=limits['HigherTemperatureLimit'])
 
+# Add a button to submit the new limits
+if st.button('Set Temperature Limits'):
+    # Ensure the input values are valid numbers before sending them to the API
+    try:
+        lower_limit_value = float(lower_limit)
+        upper_limit_value = float(upper_limit)
+        set_temperature_limits(lower_limit_value, upper_limit_value)  # Call function to set new limits
+    except ValueError:
+        st.error("Please enter valid numerical values for the temperature limits.")
+
 # Loop to update the dashboard in real-time
 while True:
     # Get temperature data from the endpoint
@@ -77,9 +119,8 @@ while True:
         
         # Append the new data to the DataFrame
         new_df = pd.DataFrame(temperature_data)
-        # temperature_df = pd.concat([temperature_df, new_df], ignore_index=True) Dado que se está recuperando una serie de datos, concatener está resultando en valores sobrepuestos
         temperature_df = new_df
-        #print(temperature_df) # Debugging
+
         # Update the chart
         chart_placeholder.line_chart(
             temperature_df.set_index('Time'),
